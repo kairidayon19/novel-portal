@@ -25,23 +25,49 @@ function makeCard(b) {
   return card;
 }
 function appendPage(){const fragment=document.createDocumentFragment();visible.slice(shown,shown+PAGE_SIZE).forEach(b=>fragment.appendChild(makeCard(b)));$('cards').appendChild(fragment);shown=Math.min(shown+PAGE_SIZE,visible.length);$('more').hidden=shown>=visible.length;}
-const GENRES = ['ラブコメ','青春','学園','ファンタジー','ダーク','SF','Vtuber','ミステリ','サスペンス','感動'];
 const norm = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase();
+let genreOptions = [];
+function selectedGenres() {
+  return [...document.querySelectorAll('#genre-checkboxes input[type="checkbox"]:checked')].map(el => el.value);
+}
 function matchesGenre(value, selected) {
-  if (!selected) return true;
+  if (!selected.length) return true;
   const text = norm(value);
-  if (selected === 'その他') return !GENRES.some(g => text.includes(norm(g)));
-  return text.includes(norm(selected));
+  return selected.some(genre => genre === 'その他'
+    ? !genreOptions.filter(g => g !== 'その他').some(g => text.includes(norm(g)))
+    : text.includes(norm(genre)));
+}
+function renderGenres(genres) {
+  genreOptions = [...new Set(genres.map(v => String(v).trim()).filter(Boolean))];
+  const root = $('genre-checkboxes');
+  root.replaceChildren();
+  genreOptions.forEach((genre, i) => {
+    const label = document.createElement('label');
+    label.className = 'genre-option';
+    const input = document.createElement('input');
+    input.type = 'checkbox'; input.name = 'genre'; input.value = genre;
+    input.id = 'genre-check-' + i;
+    input.addEventListener('change', update);
+    const span = document.createElement('span'); span.textContent = genre;
+    label.append(input, span); root.append(label);
+  });
 }
 function markSelections() {
-  ['year','month','status','genre'].forEach(id => $(id).classList.toggle('is-selected', Boolean($(id).value)));
+  ['year','month','status'].forEach(id => $(id).classList.toggle('is-selected', Boolean($(id).value)));
   $('sort').classList.toggle('is-selected', $('sort').value !== 'title');
+  const active = ['year','month','status'].filter(id => Boolean($(id).value)).length + selectedGenres().length;
+  const badge = $('filter-active-count');
+  badge.textContent = `${active}件選択中`;
+  badge.hidden = active === 0;
+  const count = selectedGenres().length;
+  $('genre-selected-count').textContent = count ? `（${count}件選択中）` : '';
+  $('genre-checkboxes').classList.toggle('has-selection', count > 0);
 }
 function update() {
   const query = norm($('search').value.trim());
   const field = document.querySelector('input[name="field"]:checked').value;
   const year = $('year').value, month = $('month').value;
-  const status = $('status').value, genre = $('genre').value, sort = $('sort').value;
+  const status = $('status').value, genre = selectedGenres(), sort = $('sort').value;
   visible = books.filter(b => {
     const date = String(b.date ?? '');
     if (year && date.slice(0,4) !== year) return false;
@@ -86,11 +112,16 @@ async function init(){
   try {
     if (GAS_URL) {
       if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(GAS_URL)) throw Error('GAS_URL に /exec で終わるURLを設定してください');
-      books = await loadJsonp(GAS_URL);
+      const response = await loadJsonp(GAS_URL);
+      books = Array.isArray(response) ? response : response.books;
+      if (Array.isArray(response.genres)) renderGenres(response.genres);
+      else throw Error('ジャンル一覧がAPIにありません。Code.gsを更新して再デプロイしてください');
     } else {
       const res = await fetch('./books.json', {cache:'no-store'});
       if (!res.ok) throw Error('HTTP ' + res.status);
-      books = await res.json();
+      const response = await res.json();
+      books = Array.isArray(response) ? response : response.books;
+      renderGenres(Array.isArray(response.genres) ? response.genres : []);
     }
     if (!Array.isArray(books)) throw Error('APIのデータ形式が不正です');
     const years = [...new Set(books.map(b => String(b.date ?? '').slice(0,4)).filter(y => /^\d{4}$/.test(y)))].sort((a,b) => b.localeCompare(a));
@@ -110,11 +141,12 @@ async function init(){
 }
 $('search').addEventListener('input', update);
 document.querySelectorAll('input[name="field"]').forEach(x => x.addEventListener('change', update));
-['year','month','status','genre','sort'].forEach(id => $(id).addEventListener('change', update));
+['year','month','status','sort'].forEach(id => $(id).addEventListener('change', update));
 $('clear').addEventListener('click', () => {
   $('search').value = '';
   document.querySelector('input[name="field"][value="all"]').checked = true;
-  ['year','month','status','genre'].forEach(id => $(id).value = '');
+  ['year','month','status'].forEach(id => $(id).value = '');
+  document.querySelectorAll('#genre-checkboxes input').forEach(el => el.checked = false);
   $('sort').value = 'title'; update();
 });
 $('more').addEventListener('click', appendPage);

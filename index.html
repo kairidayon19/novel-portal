@@ -37,9 +37,9 @@
                             value="illustrator">イラスト</label><label><input type="radio" name="field"
                             value="label">レーベル</label></div>
             </fieldset>
-            <div class="section-head">
-                <h2>絞り込み</h2>
-            </div>
+            <details class="filter-details" id="filter-details">
+                <summary class="filter-toggle"><span class="filter-toggle-title">絞り込み <span id="filter-active-count" class="filter-active-count" hidden></span></span><span class="filter-toggle-hint">年・月・刊行状況・ジャンル</span><span class="filter-toggle-chevron" aria-hidden="true"></span></summary>
+                <div class="filter-content">
             <div class="filter-grid"><label>年<select id="year">
                         <option value="">すべての年</option>
                     </select></label><label>月<select id="month">
@@ -50,20 +50,13 @@
                         <option value="継続">継続</option>
                         <option value="打ち切り">打ち切り</option>
                         <option value="その他">その他・未設定</option>
-                    </select></label><label>ジャンル<select id="genre">
-                        <option value="">すべてのジャンル</option>
-                        <option>ラブコメ</option>
-                        <option>青春</option>
-                        <option>学園</option>
-                        <option>ファンタジー</option>
-                        <option>ダーク</option>
-                        <option>SF</option>
-                        <option>Vtuber</option>
-                        <option>ミステリ</option>
-                        <option>サスペンス</option>
-                        <option>感動</option>
-                        <option>その他</option>
                     </select></label></div>
+            <fieldset class="genre-fieldset" aria-labelledby="genre-heading">
+                <legend id="genre-heading">ジャンル <span id="genre-selected-count" class="genre-count"></span></legend>
+                <div id="genre-checkboxes" class="genre-checkboxes" aria-label="ジャンルを選択"></div>
+            </fieldset>
+                </div>
+            </details>
         </section>
         <section class="results" aria-label="検索結果">
             <div class="results-bar">
