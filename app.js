@@ -14,10 +14,43 @@ function makeCard(b) {
   return card;
 }
 function appendPage(){const fragment=document.createDocumentFragment();visible.slice(shown,shown+PAGE_SIZE).forEach(b=>fragment.appendChild(makeCard(b)));$('cards').appendChild(fragment);shown=Math.min(shown+PAGE_SIZE,visible.length);$('more').hidden=shown>=visible.length;}
-function update(){const query=$('search').value.trim().normalize('NFKC').toLocaleLowerCase();const field=document.querySelector('input[name="field"]:checked').value;const date=$('date').value,status=$('status').value,sort=$('sort').value;
-  visible=books.filter(b=>{if(date&&b.date!==date)return false;if(status&&b.status!==status)return false;if(!query)return true;const fields=field==='all'?['title','author','illustrator','label']:[field];return fields.some(k=>String(b[k]??'').normalize('NFKC').toLocaleLowerCase().includes(query));});
-  visible.sort((a,b)=>sort==='date-desc'?b.date.localeCompare(a.date)||collator.compare(a.title,b.title):sort==='date-asc'?a.date.localeCompare(b.date)||collator.compare(a.title,b.title):collator.compare(a[sort]??'',b[sort]??''));
-  $('count').textContent=visible.length.toLocaleString('ja-JP');$('hint').textContent=`全${books.length.toLocaleString('ja-JP')}作品から検索`; $('cards').replaceChildren();$('empty').hidden=visible.length!==0;shown=0;appendPage();}
+const GENRES = ['ラブコメ','青春','学園','ファンタジー','ダーク','SF','Vtuber','ミステリ','サスペンス','感動'];
+const norm = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase();
+function matchesGenre(value, selected) {
+  if (!selected) return true;
+  const text = norm(value);
+  if (selected === 'その他') return !GENRES.some(g => text.includes(norm(g)));
+  return text.includes(norm(selected));
+}
+function markSelections() {
+  ['year','month','status','genre'].forEach(id => $(id).classList.toggle('is-selected', Boolean($(id).value)));
+  $('sort').classList.toggle('is-selected', $('sort').value !== 'title');
+}
+function update() {
+  const query = norm($('search').value.trim());
+  const field = document.querySelector('input[name="field"]:checked').value;
+  const year = $('year').value, month = $('month').value;
+  const status = $('status').value, genre = $('genre').value, sort = $('sort').value;
+  visible = books.filter(b => {
+    const date = String(b.date ?? '');
+    if (year && date.slice(0,4) !== year) return false;
+    if (month && Number(date.slice(5,7)) !== Number(month)) return false;
+    if (status && b.status !== status) return false;
+    if (!matchesGenre(b.genre, genre)) return false;
+    if (!query) return true;
+    const fields = field === 'all' ? ['title','author','illustrator','label'] : [field];
+    return fields.some(k => norm(b[k]).includes(query));
+  });
+  visible.sort((a,b) => sort === 'date-desc'
+    ? String(b.date ?? '').localeCompare(String(a.date ?? '')) || collator.compare(a.title,b.title)
+    : sort === 'date-asc'
+    ? String(a.date ?? '').localeCompare(String(b.date ?? '')) || collator.compare(a.title,b.title)
+    : collator.compare(a[sort] ?? '', b[sort] ?? ''));
+  $('count').textContent = visible.length.toLocaleString('ja-JP');
+  $('hint').textContent = `全${books.length.toLocaleString('ja-JP')}作品から検索`;
+  $('cards').replaceChildren(); $('empty').hidden = visible.length !== 0;
+  shown = 0; markSelections(); appendPage();
+}
 // Apps Script のデプロイURL（/exec）を貼り付けます。
 // 未設定なら同梱の books.json を読み込みます。
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyXLRZeXgETMqQ5vJTqu_0GpvRH27opU3YqmDpJgwsLHQIwCY2ityMSlx_fWTYaLDQvmw/exec';
@@ -49,10 +82,13 @@ async function init(){
       books = await res.json();
     }
     if (!Array.isArray(books)) throw Error('APIのデータ形式が不正です');
-    const dateSelect = $('date');
-    dateSelect.replaceChildren(new Option('すべて', ''));
-    const dates = [...new Set(books.map(b => b.date).filter(Boolean))].sort((a,b) => b.localeCompare(a));
-    dates.forEach(d => dateSelect.add(new Option(`${d.slice(0,4)}年${Number(d.slice(5))}月`, d)));
+    const years = [...new Set(books.map(b => String(b.date ?? '').slice(0,4)).filter(y => /^\d{4}$/.test(y)))].sort((a,b) => b.localeCompare(a));
+    const yearSelect = $('year');
+    yearSelect.replaceChildren(new Option('すべての年', ''));
+    years.forEach(y => yearSelect.add(new Option(`${y}年`, y)));
+    const monthSelect = $('month');
+    monthSelect.replaceChildren(new Option('すべての月', ''));
+    for (let m=1; m<=12; m++) monthSelect.add(new Option(`${m}月`, String(m)));
     update();
   } catch(e) {
     $('hint').textContent = 'データの読み込みに失敗しました';
@@ -61,4 +97,14 @@ async function init(){
     console.error(e);
   }
 }
-$('search').addEventListener('input',update);document.querySelectorAll('input[name="field"]').forEach(x=>x.addEventListener('change',update));['date','status','sort'].forEach(id=>$(id).addEventListener('change',update));$('clear').addEventListener('click',()=>{$('search').value='';document.querySelector('input[name="field"][value="all"]').checked=true;$('date').value='';$('status').value='';update();});$('more').addEventListener('click',appendPage);init();
+$('search').addEventListener('input', update);
+document.querySelectorAll('input[name="field"]').forEach(x => x.addEventListener('change', update));
+['year','month','status','genre','sort'].forEach(id => $(id).addEventListener('change', update));
+$('clear').addEventListener('click', () => {
+  $('search').value = '';
+  document.querySelector('input[name="field"][value="all"]').checked = true;
+  ['year','month','status','genre'].forEach(id => $(id).value = '');
+  $('sort').value = 'title'; update();
+});
+$('more').addEventListener('click', appendPage);
+init();
