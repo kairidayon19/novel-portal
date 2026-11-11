@@ -9,8 +9,19 @@ function makeCard(b) {
   const card=document.createElement('article');card.className='book';
   const links=[['BOOK☆WALKER',b.bookwalker,''],['Amazon',b.amazon,'amazon']].filter(x=>safeUrl(x[1])).map(([name,url,cls])=>`<a class="${cls}" href="${esc(safeUrl(url))}" target="_blank" rel="noopener noreferrer sponsored">${name} ↗</a>`).join('');
   const statusCls=b.status==='打ち切り'?'stop':'status';
+  const coverUrl = safeUrl(b.cover || '');
+  const coverHtml = coverUrl
+    ? `<img class="book-cover-image" src="${esc(coverUrl)}" alt="${esc(b.title)}の表紙" loading="lazy" referrerpolicy="no-referrer">`
+    : '<div class="book-cover-placeholder" aria-label="表紙未登録">NO IMAGE</div>';
   const date=b.date?`${b.date.slice(0,4)}年${Number(b.date.slice(5))}月`:'発売年月未設定';
-  card.innerHTML=`<h3 class="book-title">${esc(b.title)}</h3><dl class="meta"><dt>著者</dt><dd>${esc(b.author)||'—'}</dd><dt>イラスト</dt><dd>${esc(b.illustrator)||'—'}</dd><dt>レーベル</dt><dd>${esc(b.label)||'—'}</dd><dt>ジャンル</dt><dd>${esc(b.genre)||'—'}</dd></dl><div class="tags"><span class="tag">${esc(date)}</span><span class="tag ${statusCls}">${esc(b.publication)||'未設定'}</span></div>${links?`<div class="links">${links}</div>`:''}`;
+  card.innerHTML=`<div class="book-body"><div class="book-cover">${coverHtml}</div><div class="book-details"><h3 class="book-title">${esc(b.title)}</h3><dl class="meta"><dt>著者</dt><dd>${esc(b.author)||'—'}</dd><dt>イラスト</dt><dd>${esc(b.illustrator)||'—'}</dd><dt>レーベル</dt><dd>${esc(b.label)||'—'}</dd><dt>ジャンル</dt><dd>${esc(b.genre)||'—'}</dd></dl><div class="tags"><span class="tag">${esc(date)}</span><span class="tag ${statusCls}">${esc(b.publication)||'未設定'}</span></div></div></div>${links?`<div class="links">${links}</div>`:''}`;
+  const image = card.querySelector('.book-cover-image');
+  if (image) image.addEventListener('error', () => {
+    image.replaceWith(Object.assign(document.createElement('div'), {
+      className: 'book-cover-placeholder',
+      textContent: 'NO IMAGE'
+    }));
+  }, {once:true});
   return card;
 }
 function appendPage(){const fragment=document.createDocumentFragment();visible.slice(shown,shown+PAGE_SIZE).forEach(b=>fragment.appendChild(makeCard(b)));$('cards').appendChild(fragment);shown=Math.min(shown+PAGE_SIZE,visible.length);$('more').hidden=shown>=visible.length;}
