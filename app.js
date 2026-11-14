@@ -119,6 +119,7 @@ function update() {
     : collator.compare(a[sort] ?? '', b[sort] ?? ''));
   $('count').textContent = visible.length.toLocaleString('ja-JP');
   $('hint').textContent = `全${books.length.toLocaleString('ja-JP')}作品から検索`;
+  $('loading').hidden = true;
   $('cards').replaceChildren(); $('empty').hidden = visible.length !== 0;
   shown = 0; markSelections(); appendPage();
 }
