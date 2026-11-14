@@ -1,5 +1,5 @@
 "use strict";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxiekEJjHkTgGnJb-mmjplYS26NHgEMdB5CtU1dwDaq3HmfaRXrWSCeDSBou-S6o3TL/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyXLRZeXgETMqQ5vJTqu_0GpvRH27opU3YqmDpJgwsLHQIwCY2ityMSlx_fWTYaLDQvmw/exec";
 const root=document.getElementById("contributors");
 function validUrl(v) {
   try {
